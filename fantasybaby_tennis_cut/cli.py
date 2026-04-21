@@ -37,7 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
             "singles-match",
             "single",
         ],
-        help="Preset: 1=serve training, 2=doubles match, 3=singles match.",
+        help="Preset: 1=serve training, 2=doubles match optimized, 3=singles match optimized.",
     )
     parser.add_argument("--timeline", help="Write detected timeline JSON.")
     parser.add_argument("--dry-run", action="store_true", help="Analyze only, do not render video.")
@@ -192,8 +192,8 @@ def _prompt_interactive_args(args: argparse.Namespace) -> argparse.Namespace:
     print("FantasyBaby网球视频自动剪辑")
     print("请选择视频类型:")
     print("  1. 发球训练视频")
-    print("  2. 双打比赛视频")
-    print("  3. 单打比赛视频")
+    print("  2. 双打比赛视频（比赛优化）")
+    print("  3. 单打比赛视频（比赛优化）")
 
     if args.video_type is None:
         args.video_type = _prompt_choice("请输入类型编号 (1/2/3): ", {"1", "2", "3"})

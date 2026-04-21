@@ -89,12 +89,14 @@ uv --cache-dir .uv-cache run tennis-cut
 # 1 = 发球训练视频
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\serve.mp4" -o "D:\videos\serve_cut.mp4" --video-type 1
 
-# 2 = 双打比赛视频，包含本轮针对 tennis2 调试出的参数
+# 2 = 双打比赛视频，使用比赛优化参数
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\doubles.mp4" -o "D:\videos\doubles_cut.mp4" --video-type 2
 
-# 3 = 单打比赛视频
+# 3 = 单打比赛视频，使用同一套比赛优化参数
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\singles.mp4" -o "D:\videos\singles_cut.mp4" --video-type 3
 ```
+
+`2` 和 `3` 目前共享同一套比赛剪辑优化：包含回合滞回检测、音频桥接、质量窗口过滤、强尾巴修剪和长尾音频修剪。这样可以避免单打模式回到早期那些保留聊天/捡球片段、误删完整回合的问题；后续如果有更典型的单打样本，再单独微调 `3`。
 
 macOS / Linux 路径示例：
 
