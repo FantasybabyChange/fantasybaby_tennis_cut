@@ -23,23 +23,32 @@ class VideoRenderer:
         source = Path(input_path)
         target = Path(output_path)
         target.parent.mkdir(parents=True, exist_ok=True)
+        ffmpeg = _find_ffmpeg()
 
-        if self.config.prefer_stream_copy and shutil.which("ffmpeg"):
+        if ffmpeg:
             try:
-                self._render_with_ffmpeg(source, target, segments, stream_copy=True)
+                self._render_with_ffmpeg(
+                    ffmpeg,
+                    source,
+                    target,
+                    segments,
+                    stream_copy=self.config.prefer_stream_copy,
+                )
                 return
             except subprocess.CalledProcessError:
-                try:
-                    self._render_with_ffmpeg(source, target, segments, stream_copy=False)
-                    return
-                except subprocess.CalledProcessError:
-                    self._render_with_opencv(source, target, segments)
-                    return
+                if self.config.prefer_stream_copy:
+                    try:
+                        self._render_with_ffmpeg(ffmpeg, source, target, segments, stream_copy=False)
+                        return
+                    except subprocess.CalledProcessError:
+                        pass
 
+        print("Warning: FFmpeg not found; falling back to OpenCV without audio.")
         self._render_with_opencv(source, target, segments)
 
     def _render_with_ffmpeg(
         self,
+        ffmpeg: str,
         source: Path,
         target: Path,
         segments: list[Segment],
@@ -52,7 +61,7 @@ class VideoRenderer:
             for index, segment in enumerate(segments):
                 part = temp_dir / f"part_{index:04d}.mp4"
                 command = [
-                    "ffmpeg",
+                    ffmpeg,
                     "-y",
                     "-hide_banner",
                     "-loglevel",
@@ -77,7 +86,7 @@ class VideoRenderer:
                 encoding="utf-8",
             )
             command = [
-                "ffmpeg",
+                ffmpeg,
                 "-y",
                 "-hide_banner",
                 "-loglevel",
@@ -141,6 +150,19 @@ class VideoRenderer:
                 writer.release()
         finally:
             capture.release()
+
+
+def _find_ffmpeg() -> str | None:
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg:
+        return ffmpeg
+
+    try:
+        import imageio_ffmpeg
+    except ModuleNotFoundError:
+        return None
+
+    return imageio_ffmpeg.get_ffmpeg_exe()
 
 
 def write_timeline(

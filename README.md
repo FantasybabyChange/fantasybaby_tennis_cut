@@ -40,6 +40,25 @@ ffmpeg -version
 uv run tennis-cut "D:\videos\input.mp4" -o "D:\videos\tennis_rallies.mp4"
 ```
 
+不带输入路径时会进入交互模式，先选择视频类型，再输入源视频和输出路径：
+
+```powershell
+uv run tennis-cut
+```
+
+也可以直接指定视频类型：
+
+```powershell
+# 1 = 发球训练视频
+uv run tennis-cut "D:\videos\serve.mp4" -o "D:\videos\serve_cut.mp4" --video-type 1
+
+# 2 = 双打比赛视频，包含本轮针对 tennis2 调试出的参数
+uv run tennis-cut "D:\videos\doubles.mp4" -o "D:\videos\doubles_cut.mp4" --video-type 2
+
+# 3 = 单打比赛视频
+uv run tennis-cut "D:\videos\singles.mp4" -o "D:\videos\singles_cut.mp4" --video-type 3
+```
+
 先只分析，不导出视频：
 
 ```powershell
