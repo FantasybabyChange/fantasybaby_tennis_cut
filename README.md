@@ -36,19 +36,42 @@ ffmpeg -version
 
 ## 快速使用
 
-Windows 用户推荐直接运行项目根目录下的启动脚本：
+### Windows 启动
 
 ```powershell
 .\start_tennis_cut.bat
 ```
 
-脚本会自动进入项目目录，并使用项目内缓存运行：
+`start_tennis_cut.bat` 会自动进入项目目录，并使用项目内缓存运行：
 
 ```bat
 uv --cache-dir .uv-cache run tennis-cut
 ```
 
 运行后按提示依次选择视频类型、输入源视频路径、输入输出视频路径。
+
+### macOS / Linux 启动
+
+macOS 和 Linux 用户推荐运行项目根目录下的 shell 启动脚本：
+
+```bash
+./start_tennis_cut.sh
+```
+
+如果第一次运行提示没有执行权限，先执行：
+
+```bash
+chmod +x start_tennis_cut.sh
+./start_tennis_cut.sh
+```
+
+`start_tennis_cut.sh` 同样会自动进入项目目录，并使用项目内缓存运行：
+
+```bash
+uv --cache-dir .uv-cache run tennis-cut
+```
+
+### 命令行直接运行
 
 ```powershell
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\input.mp4" -o "D:\videos\tennis_rallies.mp4"
@@ -71,6 +94,12 @@ uv --cache-dir .uv-cache run tennis-cut "D:\videos\doubles.mp4" -o "D:\videos\do
 
 # 3 = 单打比赛视频
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\singles.mp4" -o "D:\videos\singles_cut.mp4" --video-type 3
+```
+
+macOS / Linux 路径示例：
+
+```bash
+uv --cache-dir .uv-cache run tennis-cut "/Users/yourname/Videos/doubles.mp4" -o "/Users/yourname/Videos/output/doubles_cut.mp4" --video-type 2
 ```
 
 本轮调试 `tennis2.mp4` 双打比赛时使用的直接生成命令：
@@ -131,6 +160,7 @@ fantasybaby_tennis_cut/
   config.py     # 配置读取
   segments.py   # 片段数据结构和合并裁剪
 start_tennis_cut.bat # Windows 交互式启动脚本
+start_tennis_cut.sh  # macOS/Linux 交互式启动脚本
 ```
 
 ## 后续升级方向
