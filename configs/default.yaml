@@ -1,0 +1,20 @@
+analysis_fps: 6.0
+resize_width: 640
+roi: null
+
+diff_pixel_threshold: 18
+small_motion_min_area: 4
+small_motion_max_area: 900
+small_motion_weight: 0.35
+motion_weight: 0.65
+
+smooth_window_seconds: 1.1
+active_threshold: 0.34
+min_rally_seconds: 4.0
+merge_gap_seconds: 2.0
+pre_roll_seconds: 0.9
+post_roll_seconds: 1.2
+
+prefer_stream_copy: true
+fallback_crf: 18
+fallback_preset: medium

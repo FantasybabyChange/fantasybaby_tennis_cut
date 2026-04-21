@@ -1,0 +1,43 @@
+# Python / uv
+.venv/
+.uv-cache/
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+build/
+dist/
+
+# Test / lint / coverage cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local environment
+.env
+.env.*
+
+# Generated media and analysis output
+outputs/
+exports/
+clips/
+timelines/
+tmp/
+temp/
+logs/
+
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.m4v
+*.webm
+*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
