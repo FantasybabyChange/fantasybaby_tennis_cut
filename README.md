@@ -36,39 +36,59 @@ ffmpeg -version
 
 ## 快速使用
 
+Windows 用户推荐直接运行项目根目录下的启动脚本：
+
 ```powershell
-uv run tennis-cut "D:\videos\input.mp4" -o "D:\videos\tennis_rallies.mp4"
+.\start_tennis_cut.bat
+```
+
+脚本会自动进入项目目录，并使用项目内缓存运行：
+
+```bat
+uv --cache-dir .uv-cache run tennis-cut
+```
+
+运行后按提示依次选择视频类型、输入源视频路径、输入输出视频路径。
+
+```powershell
+uv --cache-dir .uv-cache run tennis-cut "D:\videos\input.mp4" -o "D:\videos\tennis_rallies.mp4"
 ```
 
 不带输入路径时会进入交互模式，先选择视频类型，再输入源视频和输出路径：
 
 ```powershell
-uv run tennis-cut
+uv --cache-dir .uv-cache run tennis-cut
 ```
 
 也可以直接指定视频类型：
 
 ```powershell
 # 1 = 发球训练视频
-uv run tennis-cut "D:\videos\serve.mp4" -o "D:\videos\serve_cut.mp4" --video-type 1
+uv --cache-dir .uv-cache run tennis-cut "D:\videos\serve.mp4" -o "D:\videos\serve_cut.mp4" --video-type 1
 
 # 2 = 双打比赛视频，包含本轮针对 tennis2 调试出的参数
-uv run tennis-cut "D:\videos\doubles.mp4" -o "D:\videos\doubles_cut.mp4" --video-type 2
+uv --cache-dir .uv-cache run tennis-cut "D:\videos\doubles.mp4" -o "D:\videos\doubles_cut.mp4" --video-type 2
 
 # 3 = 单打比赛视频
-uv run tennis-cut "D:\videos\singles.mp4" -o "D:\videos\singles_cut.mp4" --video-type 3
+uv --cache-dir .uv-cache run tennis-cut "D:\videos\singles.mp4" -o "D:\videos\singles_cut.mp4" --video-type 3
+```
+
+本轮调试 `tennis2.mp4` 双打比赛时使用的直接生成命令：
+
+```powershell
+uv --cache-dir .uv-cache run tennis-cut "D:\videomarker\aiVideoWorkspace\tennis2.mp4" -o "D:\videomarker\aiVideoWorkspace\output\mix2.mp4" --video-type 2
 ```
 
 先只分析，不导出视频：
 
 ```powershell
-uv run tennis-cut "D:\videos\input.mp4" --dry-run --timeline "D:\videos\timeline.json"
+uv --cache-dir .uv-cache run tennis-cut "D:\videos\input.mp4" --dry-run --timeline "D:\videos\timeline.json"
 ```
 
 使用配置文件：
 
 ```powershell
-uv run tennis-cut "D:\videos\input.mp4" -o "D:\videos\out.mp4" --config configs\default.yaml
+uv --cache-dir .uv-cache run tennis-cut "D:\videos\input.mp4" -o "D:\videos\out.mp4" --config configs\default.yaml
 ```
 
 ## 参数调试建议
@@ -103,12 +123,14 @@ roi: [0.0, 0.15, 1.0, 0.95]
 
 ```text
 fantasybaby_tennis_cut/
+  audio.py      # 音频击球瞬态分析、片段桥接和长尾修剪
   analyzer.py   # 视频抽样和运动特征
   detector.py   # 回合检测
   renderer.py   # 视频片段合成
   cli.py        # 命令行入口
   config.py     # 配置读取
   segments.py   # 片段数据结构和合并裁剪
+start_tennis_cut.bat # Windows 交互式启动脚本
 ```
 
 ## 后续升级方向
