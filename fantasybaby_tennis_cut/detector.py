@@ -57,14 +57,7 @@ class RallyDetector:
         samples: list[FrameSample],
     ) -> list[Segment]:
         segments = self._trim_to_quality_window(segments, samples)
-        padded = [
-            segment.with_padding(
-                self.config.pre_roll_seconds,
-                self.config.post_roll_seconds,
-                duration,
-            )
-            for segment in segments
-        ]
+        padded = self._pad_segments(segments, duration)
         start_floor = max(0.0, self.config.ignore_initial_seconds)
         if start_floor > 0:
             padded = [
@@ -76,6 +69,25 @@ class RallyDetector:
         merged = merge_segments(padded, self.config.merge_gap_seconds)
         long_enough = filter_short_segments(merged, self.config.min_rally_seconds)
         return self._filter_quality(long_enough, samples)
+
+    def _pad_segments(self, segments: list[Segment], duration: float) -> list[Segment]:
+        padded: list[Segment] = []
+        previous_end: float | None = None
+        for segment in segments:
+            pre_roll = self.config.pre_roll_seconds
+            if (
+                self.config.serve_pre_roll_seconds > pre_roll
+                and (
+                    previous_end is None
+                    or segment.start - previous_end >= self.config.serve_pre_roll_gap_seconds
+                )
+            ):
+                pre_roll = self.config.serve_pre_roll_seconds
+
+            padded.append(segment.with_padding(pre_roll, self.config.post_roll_seconds, duration))
+            previous_end = segment.end
+
+        return padded
 
     def _trim_to_quality_window(
         self,

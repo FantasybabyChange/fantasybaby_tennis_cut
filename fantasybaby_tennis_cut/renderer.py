@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -72,7 +73,7 @@ class VideoRenderer:
                     str(source),
                     "-t",
                     f"{segment.duration:.3f}",
-                    *self._ffmpeg_codec_args(stream_copy),
+                    *self._ffmpeg_codec_args(ffmpeg, source, stream_copy),
                     "-avoid_negative_ts",
                     "make_zero",
                     str(part),
@@ -103,9 +104,29 @@ class VideoRenderer:
             ]
             subprocess.run(command, check=True)
 
-    def _ffmpeg_codec_args(self, stream_copy: bool) -> list[str]:
+    def _ffmpeg_codec_args(self, ffmpeg: str, source: Path, stream_copy: bool) -> list[str]:
         if stream_copy:
             return ["-c", "copy"]
+
+        bitrate_kbps = (
+            _detect_source_video_bitrate_kbps(ffmpeg, source)
+            if self.config.preserve_source_bitrate
+            else None
+        )
+        if bitrate_kbps:
+            return [
+                "-c:v",
+                "libx264",
+                "-b:v",
+                f"{bitrate_kbps}k",
+                "-preset",
+                self.config.fallback_preset,
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+            ]
+
         return [
             "-c:v",
             "libx264",
@@ -163,6 +184,25 @@ def _find_ffmpeg() -> str | None:
         return None
 
     return imageio_ffmpeg.get_ffmpeg_exe()
+
+
+def _detect_source_video_bitrate_kbps(ffmpeg: str, source: Path) -> int | None:
+    process = subprocess.run(
+        [ffmpeg, "-hide_banner", "-i", str(source)],
+        text=True,
+        capture_output=True,
+    )
+    info = process.stderr + process.stdout
+    video_lines = [line for line in info.splitlines() if " Video:" in line]
+    for line in video_lines:
+        match = re.search(r"(\d+)\s+kb/s", line)
+        if match:
+            return int(match.group(1))
+
+    match = re.search(r"bitrate:\s*(\d+)\s+kb/s", info)
+    if match:
+        return int(match.group(1))
+    return None
 
 
 def write_timeline(

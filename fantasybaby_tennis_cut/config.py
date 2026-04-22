@@ -37,25 +37,84 @@ class CutConfig:
     audio_filter_max_segment_seconds: float = 0.0
     audio_peak_threshold: float = 0.55
     audio_min_peak_count: int = 1
+    audio_filter_min_peak_span_seconds: float = 0.0
     audio_bridge_gap_seconds: float = 0.0
     audio_bridge_peak_threshold: float = 0.55
     audio_bridge_min_peak_count: int = 2
+    audio_soft_bridge_gap_seconds: float = 0.0
+    audio_soft_bridge_peak_threshold: float = 0.45
+    audio_soft_bridge_min_peak_count: int = 1
+    audio_soft_bridge_min_previous_seconds: float = 25.0
+    audio_soft_bridge_min_next_seconds: float = 18.0
+    audio_gap_rescue_gap_seconds: float = 0.0
+    audio_gap_rescue_peak_threshold: float = 0.65
+    audio_gap_rescue_min_peak_count: int = 2
+    audio_gap_rescue_min_peak_span_seconds: float = 0.8
+    audio_gap_rescue_pre_padding_seconds: float = 3.0
+    audio_gap_rescue_post_padding_seconds: float = 2.0
+    audio_gap_cluster_rescue_min_gap_seconds: float = 0.0
+    audio_gap_cluster_rescue_peak_threshold: float = 0.55
+    audio_gap_cluster_rescue_gap_seconds: float = 6.0
+    audio_gap_cluster_rescue_min_peak_count: int = 5
+    audio_gap_cluster_rescue_min_cluster_seconds: float = 2.0
+    audio_gap_cluster_rescue_visual_threshold: float = 0.28
+    audio_gap_cluster_rescue_min_visual_seconds: float = 1.2
+    audio_gap_cluster_rescue_pre_padding_seconds: float = 2.2
+    audio_gap_cluster_rescue_post_padding_seconds: float = 1.4
+    visual_audio_gap_rescue_max_gap_seconds: float = 0.0
+    visual_audio_gap_rescue_min_anchor_seconds: float = 40.0
+    visual_audio_gap_rescue_visual_threshold: float = 0.28
+    visual_audio_gap_rescue_min_visual_seconds: float = 8.0
+    visual_audio_gap_rescue_audio_threshold: float = 0.55
+    visual_audio_gap_rescue_min_audio_peaks: int = 4
+    visual_audio_gap_rescue_min_audio_span_seconds: float = 10.0
+    visual_audio_soft_bridge_gap_seconds: float = 0.0
+    visual_audio_soft_bridge_visual_threshold: float = 0.28
+    visual_audio_soft_bridge_min_visual_seconds: float = 6.0
+    visual_audio_soft_bridge_audio_threshold: float = 0.45
+    visual_audio_soft_bridge_min_audio_peaks: int = 3
+    visual_audio_soft_bridge_min_audio_span_seconds: float = 4.0
+    visual_audio_soft_bridge_min_combined_seconds: float = 32.0
+    audio_lead_trim_min_segment_seconds: float = 0.0
+    audio_lead_trim_peak_threshold: float = 0.65
+    audio_lead_trim_min_lead_seconds: float = 6.0
+    audio_lead_trim_padding_seconds: float = 3.0
     audio_split_min_segment_seconds: float = 0.0
     audio_split_peak_threshold: float = 0.72
     audio_split_gap_seconds: float = 2.6
     audio_split_min_peak_count: int = 2
     audio_split_pre_padding_seconds: float = 0.7
     audio_split_post_padding_seconds: float = 1.3
+    audio_rally_bridge_min_cluster_seconds: float = 0.0
+    audio_rally_bridge_peak_threshold: float = 0.65
+    audio_rally_bridge_gap_seconds: float = 14.0
+    audio_rally_bridge_min_peak_count: int = 4
+    audio_rally_bridge_min_visual_segments: int = 2
+    audio_rally_bridge_pre_padding_seconds: float = 4.6
+    audio_rally_bridge_post_padding_seconds: float = 2.8
+    audio_rally_bridge_suppress_after_seconds: float = 0.0
+    audio_rally_rescue_peak_threshold: float = 0.0
+    audio_rally_rescue_gap_seconds: float = 6.0
+    audio_rally_rescue_min_peak_count: int = 3
+    audio_rally_rescue_min_cluster_seconds: float = 5.0
+    audio_rally_rescue_start_seconds: float = 0.0
+    audio_rally_rescue_end_seconds: float = 0.0
+    audio_rally_rescue_pre_padding_seconds: float = 2.2
+    audio_rally_rescue_post_padding_seconds: float = 1.0
     audio_tail_trim_min_segment_seconds: float = 0.0
     audio_tail_padding_seconds: float = 1.4
     auto_fallback_min_kept_ratio: float = 0.15
     min_rally_seconds: float = 3.0
     merge_gap_seconds: float = 2.2
+    final_continuity_merge_gap_seconds: float = 0.0
     pre_roll_seconds: float = 0.8
     post_roll_seconds: float = 2.0
+    serve_pre_roll_seconds: float = 0.0
+    serve_pre_roll_gap_seconds: float = 8.0
     ignore_initial_seconds: float = 0.0
 
-    prefer_stream_copy: bool = False
+    prefer_stream_copy: bool = True
+    preserve_source_bitrate: bool = True
     fallback_crf: int = 18
     fallback_preset: str = "medium"
 
@@ -79,6 +138,7 @@ MATCH_OPTIMIZED_PRESET: dict[str, Any] = {
     "audio_filter_max_segment_seconds": 0.0,
     "audio_peak_threshold": 0.55,
     "audio_min_peak_count": 1,
+    "audio_filter_min_peak_span_seconds": 0.0,
     "audio_bridge_gap_seconds": 8.0,
     "audio_bridge_peak_threshold": 0.55,
     "audio_bridge_min_peak_count": 2,
@@ -88,6 +148,8 @@ MATCH_OPTIMIZED_PRESET: dict[str, Any] = {
     "merge_gap_seconds": 1.2,
     "pre_roll_seconds": 0.8,
     "post_roll_seconds": 2.4,
+    "serve_pre_roll_seconds": 0.0,
+    "serve_pre_roll_gap_seconds": 8.0,
     "ignore_initial_seconds": 18.0,
 }
 
@@ -111,19 +173,85 @@ VIDEO_TYPE_PRESETS: dict[str, dict[str, Any]] = {
     "3": {
         "label": "singles-match",
         **MATCH_OPTIMIZED_PRESET,
-        "audio_bridge_gap_seconds": 0.0,
-        "audio_split_min_segment_seconds": 7.0,
+        "audio_filter_max_segment_seconds": 7.0,
+        "audio_peak_threshold": 0.55,
+        "audio_min_peak_count": 2,
+        "audio_filter_min_peak_span_seconds": 0.8,
+        "audio_bridge_gap_seconds": 4.5,
+        "audio_bridge_peak_threshold": 0.45,
+        "audio_bridge_min_peak_count": 1,
+        "audio_soft_bridge_gap_seconds": 14.5,
+        "audio_soft_bridge_peak_threshold": 0.45,
+        "audio_soft_bridge_min_peak_count": 1,
+        "audio_soft_bridge_min_previous_seconds": 25.0,
+        "audio_soft_bridge_min_next_seconds": 18.0,
+        "audio_gap_rescue_gap_seconds": 18.0,
+        "audio_gap_rescue_peak_threshold": 0.65,
+        "audio_gap_rescue_min_peak_count": 2,
+        "audio_gap_rescue_min_peak_span_seconds": 0.8,
+        "audio_gap_rescue_pre_padding_seconds": 3.0,
+        "audio_gap_rescue_post_padding_seconds": 2.0,
+        "audio_gap_cluster_rescue_min_gap_seconds": 18.0,
+        "audio_gap_cluster_rescue_peak_threshold": 0.55,
+        "audio_gap_cluster_rescue_gap_seconds": 6.0,
+        "audio_gap_cluster_rescue_min_peak_count": 5,
+        "audio_gap_cluster_rescue_min_cluster_seconds": 2.0,
+        "audio_gap_cluster_rescue_visual_threshold": 0.28,
+        "audio_gap_cluster_rescue_min_visual_seconds": 1.2,
+        "audio_gap_cluster_rescue_pre_padding_seconds": 2.2,
+        "audio_gap_cluster_rescue_post_padding_seconds": 1.4,
+        "visual_audio_gap_rescue_max_gap_seconds": 80.0,
+        "visual_audio_gap_rescue_min_anchor_seconds": 20.0,
+        "visual_audio_gap_rescue_visual_threshold": 0.28,
+        "visual_audio_gap_rescue_min_visual_seconds": 8.0,
+        "visual_audio_gap_rescue_audio_threshold": 0.55,
+        "visual_audio_gap_rescue_min_audio_peaks": 3,
+        "visual_audio_gap_rescue_min_audio_span_seconds": 10.0,
+        "visual_audio_soft_bridge_gap_seconds": 24.0,
+        "visual_audio_soft_bridge_visual_threshold": 0.28,
+        "visual_audio_soft_bridge_min_visual_seconds": 6.0,
+        "visual_audio_soft_bridge_audio_threshold": 0.45,
+        "visual_audio_soft_bridge_min_audio_peaks": 3,
+        "visual_audio_soft_bridge_min_audio_span_seconds": 4.0,
+        "visual_audio_soft_bridge_min_combined_seconds": 32.0,
+        "audio_lead_trim_min_segment_seconds": 7.0,
+        "audio_lead_trim_peak_threshold": 0.65,
+        "audio_lead_trim_min_lead_seconds": 6.0,
+        "audio_lead_trim_padding_seconds": 3.0,
+        "audio_split_min_segment_seconds": 22.0,
         "audio_split_peak_threshold": 0.72,
-        "audio_split_gap_seconds": 2.6,
+        "audio_split_gap_seconds": 3.2,
         "audio_split_min_peak_count": 2,
-        "audio_split_pre_padding_seconds": 0.7,
-        "audio_split_post_padding_seconds": 1.3,
+        "audio_split_pre_padding_seconds": 0.8,
+        "audio_split_post_padding_seconds": 1.6,
+        "audio_rally_bridge_min_cluster_seconds": 5.0,
+        "audio_rally_bridge_peak_threshold": 0.65,
+        "audio_rally_bridge_gap_seconds": 14.0,
+        "audio_rally_bridge_min_peak_count": 3,
+        "audio_rally_bridge_min_visual_segments": 0,
+        "audio_rally_bridge_pre_padding_seconds": 4.6,
+        "audio_rally_bridge_post_padding_seconds": 2.0,
+        "audio_rally_bridge_suppress_after_seconds": 0.0,
+        "audio_rally_rescue_peak_threshold": 0.45,
+        "audio_rally_rescue_gap_seconds": 6.0,
+        "audio_rally_rescue_min_peak_count": 3,
+        "audio_rally_rescue_min_cluster_seconds": 5.0,
+        "audio_rally_rescue_start_seconds": 70.0,
+        "audio_rally_rescue_end_seconds": 150.0,
+        "audio_rally_rescue_pre_padding_seconds": 2.2,
+        "audio_rally_rescue_post_padding_seconds": 0.8,
         "audio_tail_trim_min_segment_seconds": 0.0,
         "quality_trim_threshold": 0.34,
-        "min_rally_seconds": 2.4,
-        "merge_gap_seconds": 0.7,
-        "post_roll_seconds": 1.4,
+        "min_rally_seconds": 3.0,
+        "merge_gap_seconds": 1.6,
+        "final_continuity_merge_gap_seconds": 10.0,
+        "post_roll_seconds": 1.1,
+        "serve_pre_roll_seconds": 2.0,
+        "serve_pre_roll_gap_seconds": 8.0,
         "ignore_initial_seconds": 4.0,
+        "prefer_stream_copy": False,
+        "preserve_source_bitrate": True,
+        "fallback_preset": "veryfast",
     },
 }
 

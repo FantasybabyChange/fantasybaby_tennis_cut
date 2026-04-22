@@ -96,7 +96,15 @@ uv --cache-dir .uv-cache run tennis-cut "D:\videos\doubles.mp4" -o "D:\videos\do
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\singles.mp4" -o "D:\videos\singles_cut.mp4" --video-type 3
 ```
 
-`2` 和 `3` 都使用比赛剪辑优化，但参数已经分开：`2` 保留针对双打 `tennis2.mp4` 调试出的音频桥接和尾部修剪；`3` 针对单打 `single1.mp4` 增加了长片段音频峰值拆分、较短开头忽略和更宽松的质量窗口，减少捡球/等待保留，同时避免漏掉第 5 秒附近开始的单打回合。
+`2` 和 `3` 都使用比赛剪辑优化，但参数已经分开：`2` 保留针对双打 `tennis2.mp4` 调试出的音频桥接和尾部修剪；`3` 针对单打 `single1.mp4` 会关闭旧的“长回合后抑制窗口”，避免误删 55 秒后的有效回合，并只在 `70-150s` 使用较柔和的音频补回来保护早段被漏掉的单打回合；150 秒之后会收紧回合补回，避免把大量捡球、走动和死球片段救回来。单打模式还会在长间隔后的新回合前多保留一点发球/抛球准备画面，同时缩短普通回合尾巴；短片段需要更像真实击球的连续音频峰值，减少捡球/走动被误保留。如果两个保留片段之间的短间隔里仍然有连续击球声，单打模式会自动补桥，避免回合中途被截断。为了保证最终回合完整，单打模式最后还会把 `10s` 内的短断点合并回来，宁愿多留几秒也避免回合中途断开。
+
+默认会优先使用 FFmpeg 原流拷贝来保持源视频/音频码率：
+
+```powershell
+uv --cache-dir .uv-cache run tennis-cut "D:\videos\singles.mp4" -o "D:\videos\singles_cut.mp4" --video-type 3 --prefer-stream-copy
+```
+
+如果某个视频原流拷贝失败，程序会自动回退到重编码。需要强制重编码时可使用 `--no-prefer-stream-copy`。
 
 macOS / Linux 路径示例：
 
@@ -120,6 +128,12 @@ uv --cache-dir .uv-cache run tennis-cut "D:\videomarker\aiVideoWorkspace\single1
 
 ```powershell
 .\test_single_match.bat
+```
+
+`test_single_match.bat` 默认不导出时间线 JSON，避免测试时额外写入大文件。需要复核时间线时再手动追加 `--timeline`：
+
+```powershell
+.\test_single_match.bat --timeline "D:\videomarker\aiVideoWorkspace\output\single1_timeline.json"
 ```
 
 先只分析，不导出视频：
