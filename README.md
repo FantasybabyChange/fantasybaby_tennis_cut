@@ -96,7 +96,7 @@ uv --cache-dir .uv-cache run tennis-cut "D:\videos\doubles.mp4" -o "D:\videos\do
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\singles.mp4" -o "D:\videos\singles_cut.mp4" --video-type 3
 ```
 
-`2` 和 `3` 目前共享同一套比赛剪辑优化：包含回合滞回检测、音频桥接、质量窗口过滤、强尾巴修剪和长尾音频修剪。这样可以避免单打模式回到早期那些保留聊天/捡球片段、误删完整回合的问题；后续如果有更典型的单打样本，再单独微调 `3`。
+`2` 和 `3` 都使用比赛剪辑优化，但参数已经分开：`2` 保留针对双打 `tennis2.mp4` 调试出的音频桥接和尾部修剪；`3` 针对单打 `single1.mp4` 增加了长片段音频峰值拆分、较短开头忽略和更宽松的质量窗口，减少捡球/等待保留，同时避免漏掉第 5 秒附近开始的单打回合。
 
 macOS / Linux 路径示例：
 
@@ -108,6 +108,12 @@ uv --cache-dir .uv-cache run tennis-cut "/Users/yourname/Videos/doubles.mp4" -o 
 
 ```powershell
 uv --cache-dir .uv-cache run tennis-cut "D:\videomarker\aiVideoWorkspace\tennis2.mp4" -o "D:\videomarker\aiVideoWorkspace\output\mix2.mp4" --video-type 2
+```
+
+本轮调试 `single1.mp4` 单打比赛时使用的直接生成命令：
+
+```powershell
+uv --cache-dir .uv-cache run tennis-cut "D:\videomarker\aiVideoWorkspace\single1.mp4" -o "D:\videomarker\aiVideoWorkspace\output\single1_cut.mp4" --video-type 3
 ```
 
 先只分析，不导出视频：

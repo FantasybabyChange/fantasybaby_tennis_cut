@@ -40,6 +40,12 @@ class CutConfig:
     audio_bridge_gap_seconds: float = 0.0
     audio_bridge_peak_threshold: float = 0.55
     audio_bridge_min_peak_count: int = 2
+    audio_split_min_segment_seconds: float = 0.0
+    audio_split_peak_threshold: float = 0.72
+    audio_split_gap_seconds: float = 2.6
+    audio_split_min_peak_count: int = 2
+    audio_split_pre_padding_seconds: float = 0.7
+    audio_split_post_padding_seconds: float = 1.3
     audio_tail_trim_min_segment_seconds: float = 0.0
     audio_tail_padding_seconds: float = 1.4
     auto_fallback_min_kept_ratio: float = 0.15
@@ -105,6 +111,19 @@ VIDEO_TYPE_PRESETS: dict[str, dict[str, Any]] = {
     "3": {
         "label": "singles-match",
         **MATCH_OPTIMIZED_PRESET,
+        "audio_bridge_gap_seconds": 0.0,
+        "audio_split_min_segment_seconds": 7.0,
+        "audio_split_peak_threshold": 0.72,
+        "audio_split_gap_seconds": 2.6,
+        "audio_split_min_peak_count": 2,
+        "audio_split_pre_padding_seconds": 0.7,
+        "audio_split_post_padding_seconds": 1.3,
+        "audio_tail_trim_min_segment_seconds": 0.0,
+        "quality_trim_threshold": 0.34,
+        "min_rally_seconds": 2.4,
+        "merge_gap_seconds": 0.7,
+        "post_roll_seconds": 1.4,
+        "ignore_initial_seconds": 4.0,
     },
 }
 

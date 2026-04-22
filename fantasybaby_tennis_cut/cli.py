@@ -109,6 +109,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--audio-bridge-peak-threshold", type=float, help="Override bridge audio threshold.")
     parser.add_argument("--audio-bridge-min-peak-count", type=int, help="Override bridge audio peak count.")
     parser.add_argument(
+        "--audio-split-min-segment-seconds",
+        type=float,
+        help="Split visual segments longer than this duration by audio transient clusters.",
+    )
+    parser.add_argument("--audio-split-peak-threshold", type=float, help="Override audio split peak threshold.")
+    parser.add_argument("--audio-split-gap-seconds", type=float, help="Override maximum gap inside an audio split cluster.")
+    parser.add_argument("--audio-split-min-peak-count", type=int, help="Override minimum peaks per audio split cluster.")
+    parser.add_argument("--audio-split-pre-padding-seconds", type=float, help="Padding before an audio split cluster.")
+    parser.add_argument("--audio-split-post-padding-seconds", type=float, help="Padding after an audio split cluster.")
+    parser.add_argument(
         "--audio-tail-trim-min-segment-seconds",
         type=float,
         help="Trim long segment tails after the final audio transient.",
@@ -261,6 +271,12 @@ def _apply_overrides(config: CutConfig, args: argparse.Namespace) -> CutConfig:
         "audio_bridge_gap_seconds": args.audio_bridge_gap_seconds,
         "audio_bridge_peak_threshold": args.audio_bridge_peak_threshold,
         "audio_bridge_min_peak_count": args.audio_bridge_min_peak_count,
+        "audio_split_min_segment_seconds": args.audio_split_min_segment_seconds,
+        "audio_split_peak_threshold": args.audio_split_peak_threshold,
+        "audio_split_gap_seconds": args.audio_split_gap_seconds,
+        "audio_split_min_peak_count": args.audio_split_min_peak_count,
+        "audio_split_pre_padding_seconds": args.audio_split_pre_padding_seconds,
+        "audio_split_post_padding_seconds": args.audio_split_post_padding_seconds,
         "audio_tail_trim_min_segment_seconds": args.audio_tail_trim_min_segment_seconds,
         "audio_tail_padding_seconds": args.audio_tail_padding_seconds,
         "min_rally_seconds": args.min_rally_seconds,

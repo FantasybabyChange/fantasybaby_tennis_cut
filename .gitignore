@@ -24,6 +24,7 @@ outputs/
 exports/
 clips/
 timelines/
+debug/
 tmp/
 temp/
 logs/

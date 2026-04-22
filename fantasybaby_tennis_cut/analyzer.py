@@ -83,12 +83,18 @@ class VideoAnalyzer:
         previous_gray: np.ndarray | None = None
         samples: list[FrameSample] = []
         total = len(frame_indexes)
+        current_frame_index = 0
 
         for frame_index in tqdm(frame_indexes, total=total, desc="Analyzing video", unit="sample"):
-            capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+            while current_frame_index < frame_index:
+                if not capture.grab():
+                    return samples
+                current_frame_index += 1
+
             ok, frame = capture.read()
             if not ok:
-                continue
+                break
+            current_frame_index = frame_index + 1
 
             gray = self._prepare_frame(frame, info)
             if previous_gray is None:

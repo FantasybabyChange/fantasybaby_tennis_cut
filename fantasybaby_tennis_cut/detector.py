@@ -68,9 +68,9 @@ class RallyDetector:
         start_floor = max(0.0, self.config.ignore_initial_seconds)
         if start_floor > 0:
             padded = [
-                segment
+                Segment(max(segment.start, start_floor), segment.end, segment.score)
                 for segment in padded
-                if segment.start >= start_floor and segment.end > start_floor
+                if segment.end > start_floor
             ]
 
         merged = merge_segments(padded, self.config.merge_gap_seconds)
