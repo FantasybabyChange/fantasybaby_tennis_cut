@@ -116,6 +116,12 @@ uv --cache-dir .uv-cache run tennis-cut "D:\videomarker\aiVideoWorkspace\tennis2
 uv --cache-dir .uv-cache run tennis-cut "D:\videomarker\aiVideoWorkspace\single1.mp4" -o "D:\videomarker\aiVideoWorkspace\output\single1_cut.mp4" --video-type 3
 ```
 
+也可以直接运行项目根目录下的单打测试脚本：
+
+```powershell
+.\test_single_match.bat
+```
+
 先只分析，不导出视频：
 
 ```powershell
@@ -169,6 +175,7 @@ fantasybaby_tennis_cut/
   segments.py   # 片段数据结构和合并裁剪
 start_tennis_cut.bat # Windows 交互式启动脚本
 start_tennis_cut.sh  # macOS/Linux 交互式启动脚本
+test_single_match.bat # Windows 单打比赛直接测试脚本
 ```
 
 ## 后续升级方向
