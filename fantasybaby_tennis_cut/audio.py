@@ -31,6 +31,7 @@ def filter_segments_by_audio(
     rally_bridge_min_duration = config.audio_rally_bridge_min_cluster_seconds
     rally_rescue_threshold = config.audio_rally_rescue_peak_threshold
     tail_trim_min_duration = config.audio_tail_trim_min_segment_seconds
+    silent_gap_trim_min_duration = config.audio_silent_gap_trim_min_segment_seconds
     if (
         max_duration <= 0
         and bridge_gap <= 0
@@ -44,6 +45,7 @@ def filter_segments_by_audio(
         and rally_bridge_min_duration <= 0
         and rally_rescue_threshold <= 0
         and tail_trim_min_duration <= 0
+        and silent_gap_trim_min_duration <= 0
     ):
         return segments
 
@@ -89,6 +91,9 @@ def filter_segments_by_audio(
 
     if soft_bridge_gap > 0:
         filtered = _bridge_soft_continuity_gaps(track, filtered, config)
+
+    if silent_gap_trim_min_duration > 0:
+        filtered = _trim_long_silent_gaps_by_audio(track, filtered, config)
 
     if tail_trim_min_duration > 0:
         filtered = _trim_long_tails_by_audio(track, filtered, config)
@@ -690,6 +695,60 @@ def _trim_long_tails_by_audio(
             trimmed.append(Segment(segment.start, end, segment.score))
 
     return trimmed
+
+
+def _trim_long_silent_gaps_by_audio(
+    track: "_TransientTrack",
+    segments: list[Segment],
+    config: CutConfig,
+) -> list[Segment]:
+    trimmed: list[Segment] = []
+    for segment in segments:
+        if segment.duration < config.audio_silent_gap_trim_min_segment_seconds:
+            trimmed.append(segment)
+            continue
+
+        peak_times = track.peak_times(
+            segment.start,
+            segment.end,
+            threshold=config.audio_silent_gap_trim_peak_threshold,
+        )
+        if len(peak_times) < 2:
+            trimmed.append(segment)
+            continue
+
+        current_start = segment.start
+        pieces: list[Segment] = []
+        points = [segment.start, *peak_times, segment.end]
+        for previous_peak, next_peak in zip(points, points[1:]):
+            silent_gap = next_peak - previous_peak
+            if silent_gap < config.audio_silent_gap_trim_gap_seconds:
+                continue
+
+            cut_start = max(
+                current_start,
+                previous_peak + config.audio_silent_gap_trim_pre_padding_seconds,
+            )
+            cut_end = min(
+                segment.end,
+                next_peak - config.audio_silent_gap_trim_post_padding_seconds,
+            )
+            if cut_end <= cut_start:
+                continue
+
+            if cut_start - current_start >= config.min_rally_seconds:
+                pieces.append(Segment(current_start, cut_start, segment.score))
+            current_start = cut_end
+
+        if segment.end - current_start >= config.min_rally_seconds:
+            pieces.append(Segment(current_start, segment.end, segment.score))
+
+        if pieces:
+            trimmed.extend(pieces)
+        else:
+            trimmed.append(segment)
+
+    return merge_segments(trimmed, config.merge_gap_seconds)
 
 
 class _TransientTrack:

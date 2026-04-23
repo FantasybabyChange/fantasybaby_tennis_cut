@@ -12,6 +12,12 @@ dependencies = [
     "tqdm>=4.66.0",
 ]
 
+[project.optional-dependencies]
+model = [
+    "huggingface-hub>=0.23.0",
+    "ultralytics>=8.2.0",
+]
+
 [project.scripts]
 tennis-cut = "fantasybaby_tennis_cut.cli:main"
 

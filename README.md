@@ -1,142 +1,108 @@
 # FantasyBaby Tennis Cut
 
-一个面向高清、高帧率网球素材的自动剪辑项目。它会分析视频中的运动强度和小目标活动，把捡球、等待、走回底线等无用片段尽量剪掉，保留连续击球回合，最后生成一个完整连贯的视频。
+用于网球视频自动剪辑的本地工具。它会分析画面运动、音频击球瞬态和可选的网球检测模型，尽量删除捡球、等待、走位等死球时间，保留连续回合。
 
-第一版是本地可运行的启发式 AI 剪辑管线：不依赖云服务，适合先批量跑素材、调参数、建立你的剪辑风格模板。后续可以在同一结构里接入 YOLO、姿态估计、网球检测、音频击球点检测等模型。
+当前工程支持两套方案：
+
+- 旧方案：仅使用原有音频/画面规则。
+- 新方案：在旧方案基础上，用网球检测模型补回被误切断的单打回合。
 
 ## 功能
 
-- 自动扫描视频，按固定分析帧率抽样，适配高帧率素材。
-- 使用画面运动、小目标运动和时间平滑识别击球回合。
-- 合并短间隔、添加回合前后缓冲，避免剪辑点太硬。
-- 优先使用 FFmpeg 无二次解码拼接；如果流拷贝失败，会尝试 FFmpeg 重编码，再退回 OpenCV。
-- 支持导出 JSON 时间线，方便人工复核和二次精剪。
-- 支持配置文件，能针对不同机位、球场、剪辑节奏调参数。
+- 自动抽样分析视频画面运动。
+- 基于音频瞬态过滤短误检片段、桥接邻近回合、裁剪长尾空白。
+- 为单打模式提供更激进的补桥、补回和尾部修剪参数。
+- 可选启用 YOLO 网球检测模型，修复疑似被规则误切的连续回合。
+- 导出剪辑后视频，也可只做分析并导出时间线 JSON。
+- Windows 和 macOS/Linux 都有交互式启动脚本。
 
-## 环境
+## 环境准备
 
-本项目使用 `uv` 管理依赖。建议系统里也安装 FFmpeg，输出速度、画质和音频保留都会更好。
+项目使用 `uv` 管理依赖，建议系统已安装 `ffmpeg`。
+
+基础依赖：
 
 ```powershell
 uv sync
 ```
 
-如果本机的 uv 默认缓存目录有权限或路径冲突，可以临时把缓存放到项目内：
+如果需要使用新模型方案，再安装模型依赖：
 
 ```powershell
-$env:UV_CACHE_DIR = "$PWD\.uv-cache"
-uv sync
+uv sync --extra model
 ```
 
-检查 FFmpeg：
+检查 `ffmpeg`：
 
 ```powershell
 ffmpeg -version
 ```
 
-## 快速使用
+如果本机 `uv` 默认缓存目录有权限问题，也可以把缓存放在项目内：
 
-### Windows 启动
+```powershell
+$env:UV_CACHE_DIR = "$PWD\\.uv-cache"
+uv sync
+```
+
+## 快速启动
+
+### Windows
 
 ```powershell
 .\start_tennis_cut.bat
 ```
 
-`start_tennis_cut.bat` 会自动进入项目目录，并使用项目内缓存运行：
+脚本会先让用户选择剪辑方案：
 
-```bat
-uv --cache-dir .uv-cache run tennis-cut
+- `1` 旧方案：`Legacy audio/visual rules`
+- `2` 新方案：`New model-assisted ball tracking`
+
+如果选择新方案，第一次运行前先执行：
+
+```powershell
+uv sync --extra model
 ```
 
-运行后按提示依次选择视频类型、输入源视频路径、输入输出视频路径。
+然后脚本会继续提示输入视频类型、输入视频路径和输出视频路径。
 
-### macOS / Linux 启动
-
-macOS 和 Linux 用户推荐运行项目根目录下的 shell 启动脚本：
-
-```bash
-./start_tennis_cut.sh
-```
-
-如果第一次运行提示没有执行权限，先执行：
+### macOS / Linux
 
 ```bash
 chmod +x start_tennis_cut.sh
 ./start_tennis_cut.sh
 ```
 
-`start_tennis_cut.sh` 同样会自动进入项目目录，并使用项目内缓存运行：
+shell 启动脚本和 Windows 一样，也会先让用户选择旧方案或新模型方案。
 
-```bash
-uv --cache-dir .uv-cache run tennis-cut
-```
+## 命令行直接运行
 
-### 命令行直接运行
+基础用法：
 
 ```powershell
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\input.mp4" -o "D:\videos\tennis_rallies.mp4"
 ```
 
-不带输入路径时会进入交互模式，先选择视频类型，再输入源视频和输出路径：
+不带输入路径时会进入交互模式：
 
 ```powershell
 uv --cache-dir .uv-cache run tennis-cut
 ```
 
-也可以直接指定视频类型：
+指定视频类型：
 
 ```powershell
-# 1 = 发球训练视频
+# 1 = 发球训练
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\serve.mp4" -o "D:\videos\serve_cut.mp4" --video-type 1
 
-# 2 = 双打比赛视频，使用比赛优化参数
+# 2 = 双打比赛
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\doubles.mp4" -o "D:\videos\doubles_cut.mp4" --video-type 2
 
-# 3 = 单打比赛视频，使用同一套比赛优化参数
+# 3 = 单打比赛
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\singles.mp4" -o "D:\videos\singles_cut.mp4" --video-type 3
 ```
 
-`2` 和 `3` 都使用比赛剪辑优化，但参数已经分开：`2` 保留针对双打 `tennis2.mp4` 调试出的音频桥接和尾部修剪；`3` 针对单打 `single1.mp4` 会关闭旧的“长回合后抑制窗口”，避免误删 55 秒后的有效回合，并只在 `70-150s` 使用较柔和的音频补回来保护早段被漏掉的单打回合；150 秒之后会收紧回合补回，避免把大量捡球、走动和死球片段救回来。单打模式还会在长间隔后的新回合前多保留一点发球/抛球准备画面，同时缩短普通回合尾巴；短片段需要更像真实击球的连续音频峰值，减少捡球/走动被误保留。如果两个保留片段之间的短间隔里仍然有连续击球声，单打模式会自动补桥，避免回合中途被截断。为了保证最终回合完整，单打模式最后还会把 `10s` 内的短断点合并回来，宁愿多留几秒也避免回合中途断开。
-
-默认会优先使用 FFmpeg 原流拷贝来保持源视频/音频码率：
-
-```powershell
-uv --cache-dir .uv-cache run tennis-cut "D:\videos\singles.mp4" -o "D:\videos\singles_cut.mp4" --video-type 3 --prefer-stream-copy
-```
-
-如果某个视频原流拷贝失败，程序会自动回退到重编码。需要强制重编码时可使用 `--no-prefer-stream-copy`。
-
-macOS / Linux 路径示例：
-
-```bash
-uv --cache-dir .uv-cache run tennis-cut "/Users/yourname/Videos/doubles.mp4" -o "/Users/yourname/Videos/output/doubles_cut.mp4" --video-type 2
-```
-
-本轮调试 `tennis2.mp4` 双打比赛时使用的直接生成命令：
-
-```powershell
-uv --cache-dir .uv-cache run tennis-cut "D:\videomarker\aiVideoWorkspace\tennis2.mp4" -o "D:\videomarker\aiVideoWorkspace\output\mix2.mp4" --video-type 2
-```
-
-本轮调试 `single1.mp4` 单打比赛时使用的直接生成命令：
-
-```powershell
-uv --cache-dir .uv-cache run tennis-cut "D:\videomarker\aiVideoWorkspace\single1.mp4" -o "D:\videomarker\aiVideoWorkspace\output\single1_cut.mp4" --video-type 3
-```
-
-也可以直接运行项目根目录下的单打测试脚本：
-
-```powershell
-.\test_single_match.bat
-```
-
-`test_single_match.bat` 默认不导出时间线 JSON，避免测试时额外写入大文件。需要复核时间线时再手动追加 `--timeline`：
-
-```powershell
-.\test_single_match.bat --timeline "D:\videomarker\aiVideoWorkspace\output\single1_timeline.json"
-```
-
-先只分析，不导出视频：
+只分析，不输出视频：
 
 ```powershell
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\input.mp4" --dry-run --timeline "D:\videos\timeline.json"
@@ -148,53 +114,94 @@ uv --cache-dir .uv-cache run tennis-cut "D:\videos\input.mp4" --dry-run --timeli
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\input.mp4" -o "D:\videos\out.mp4" --config configs\default.yaml
 ```
 
-## 参数调试建议
+## 新模型方案
 
-- 漏掉短回合：降低 `active_threshold`，或降低 `min_rally_seconds`。
-- 捡球也被保留：提高 `active_threshold`，或提高 `min_rally_seconds`。
-- 剪辑点太紧：增加 `pre_roll_seconds` 和 `post_roll_seconds`。
-- 两段回合被切开：增加 `merge_gap_seconds`。
-- 固定机位且球场只占画面中间：配置 `roi`，减少观众、场外人员干扰。
+启用模型辅助模式：
 
-## 配置说明
-
-见 `configs/default.yaml`。其中 `roi` 是归一化坐标：
-
-```yaml
-roi: [0.0, 0.15, 1.0, 0.95]
+```powershell
+uv --cache-dir .uv-cache run tennis-cut "D:\videomarker\aiVideoWorkspace\single1.mp4" -o "D:\videomarker\aiVideoWorkspace\output\single1_cut_model.mp4" --video-type 3 --model-assist ball
 ```
 
-含义是 `[左, 上, 右, 下]`，数值范围 0 到 1。比如固定机位拍半场时，可以只保留球场主体区域。
+`--model-assist ball` 会在原有音频/画面规则之后，再用 YOLO 网球检测模型扫描候选缺口，补回疑似被误切断的连续回合。
+
+默认模型来源是 Hugging Face 上的 `RJTPP/tennis-ball-detection`。也可以显式传入本地模型文件：
+
+```powershell
+uv --cache-dir .uv-cache run tennis-cut "D:\videomarker\aiVideoWorkspace\single1.mp4" -o "D:\videomarker\aiVideoWorkspace\output\single1_cut_model.mp4" --video-type 3 --model-assist ball --model-ball-model "D:\models\tennisball.pt"
+```
+
+常用相关参数：
+
+- `--model-ball-sample-fps`
+- `--model-ball-confidence`
+- `--model-ball-bridge-min-confidence`
+- `--model-ball-candidate-gap-seconds`
+- `--model-ball-max-gap-seconds`
+- `--model-ball-min-active-seconds`
+- `--model-ball-min-detections`
+- `--model-ball-min-motion-ratio`
+- `--model-ball-bridge-padding-seconds`
+- `--model-ball-max-bridges`
+
+## 单打测试脚本
+
+旧方案单打测试：
+
+```powershell
+.\test_single_match.bat
+```
+
+如果要输出时间线：
+
+```powershell
+.\test_single_match.bat --timeline "D:\videomarker\aiVideoWorkspace\output\single1_timeline.json"
+```
+
+新模型方案单打测试：
+
+```powershell
+.\test_single_match_model.bat
+```
+
+该脚本默认输入：
+
+- 输入视频：`D:\videomarker\aiVideoWorkspace\single1.mp4`
+- 输出视频：`D:\videomarker\aiVideoWorkspace\output\single1_cut_model.mp4`
+
+它会自动附带 `--video-type 3 --model-assist ball`，其余额外参数可以继续从命令行追加。
 
 ## 输出时间线
 
 时间线 JSON 包含：
 
-- `input`：源视频路径
-- `duration_seconds`：源视频时长
-- `kept_seconds`：最终保留时长
-- `segments`：保留片段列表
-- `samples`：分析抽样点和分数，可用于可视化调参
+- `input`
+- `duration_seconds`
+- `kept_seconds`
+- `segments`
+- `samples`
+
+## 调参建议
+
+- 漏掉短回合：降低 `active_threshold` 或 `min_rally_seconds`。
+- 捡球也被保留：提高 `active_threshold` 或 `min_rally_seconds`。
+- 剪辑点太紧：增大 `pre_roll_seconds` 和 `post_roll_seconds`。
+- 一段回合被切开：增大 `merge_gap_seconds`。
+- 单打被误切：优先尝试 `--model-assist ball`。
 
 ## 项目结构
 
 ```text
 fantasybaby_tennis_cut/
-  audio.py      # 音频击球瞬态分析、片段桥接和长尾修剪
-  analyzer.py   # 视频抽样和运动特征
-  detector.py   # 回合检测
-  renderer.py   # 视频片段合成
-  cli.py        # 命令行入口
-  config.py     # 配置读取
-  segments.py   # 片段数据结构和合并裁剪
-start_tennis_cut.bat # Windows 交互式启动脚本
-start_tennis_cut.sh  # macOS/Linux 交互式启动脚本
-test_single_match.bat # Windows 单打比赛直接测试脚本
+  analyzer.py               # 视频抽样和运动特征分析
+  audio.py                  # 音频瞬态分析、桥接与裁剪
+  cli.py                    # 命令行入口
+  config.py                 # 配置与预设
+  detector.py               # 回合检测
+  model_assist.py           # 模型辅助补桥逻辑
+  renderer.py               # 视频输出
+  segments.py               # 片段结构与合并
+start_tennis_cut.bat        # Windows 交互式启动脚本
+start_tennis_cut.sh         # macOS/Linux 交互式启动脚本
+test_single_match.bat       # Windows 单打旧方案测试脚本
+test_single_match_model.bat # Windows 单打新模型方案测试脚本
 ```
-
-## 后续升级方向
-
-- 加入网球检测模型：识别球的高速运动轨迹，提升回合边界准确率。
-- 加入人体姿态模型：判断发球、准备、捡球、走回底线等状态。
-- 加入音频击球点检测：利用清脆击球声辅助分割。
-- 增加一个可视化调参 UI：直接拖动阈值并预览时间线。

@@ -42,6 +42,63 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--timeline", help="Write detected timeline JSON.")
     parser.add_argument("--dry-run", action="store_true", help="Analyze only, do not render video.")
     parser.add_argument(
+        "--model-assist",
+        choices=["off", "ball"],
+        help="Use an optional open-source model to refine rally continuity.",
+    )
+    parser.add_argument(
+        "--model-ball-model",
+        help="YOLO tennis-ball model path or Hugging Face repo id used when --model-assist ball is enabled.",
+    )
+    parser.add_argument("--model-ball-sample-fps", type=float, help="Frames per second sampled for ball detection.")
+    parser.add_argument("--model-ball-confidence", type=float, help="Minimum ball detection confidence.")
+    parser.add_argument(
+        "--model-ball-bridge-min-confidence",
+        type=float,
+        help="Minimum confidence among moving-ball detections before bridging a cut gap.",
+    )
+    parser.add_argument("--model-ball-image-size", type=int, help="YOLO inference image size for ball detection.")
+    parser.add_argument(
+        "--model-ball-candidate-gap-seconds",
+        type=float,
+        help="Only run ball detection around existing cut gaps up to this length.",
+    )
+    parser.add_argument(
+        "--model-ball-max-gap-seconds",
+        type=float,
+        help="Maximum gap between moving-ball detections considered the same rally.",
+    )
+    parser.add_argument(
+        "--model-ball-min-active-seconds",
+        type=float,
+        help="Minimum moving-ball cluster duration before model assist adds a rally segment.",
+    )
+    parser.add_argument(
+        "--model-ball-min-detections",
+        type=int,
+        help="Minimum moving-ball detections before model assist adds a rally segment.",
+    )
+    parser.add_argument(
+        "--model-ball-min-motion-ratio",
+        type=float,
+        help="Minimum normalized ball displacement between detections to count as active play.",
+    )
+    parser.add_argument(
+        "--model-ball-bridge-padding-seconds",
+        type=float,
+        help="Padding around model-detected moving-ball rally clusters.",
+    )
+    parser.add_argument(
+        "--model-ball-max-bridges",
+        type=int,
+        help="Maximum number of model-assisted cut gaps to bridge per video.",
+    )
+    parser.add_argument(
+        "--model-ball-trim-silent-gaps",
+        action=argparse.BooleanOptionalAction,
+        help="Allow model assist to trim long gaps without moving-ball detections inside kept segments.",
+    )
+    parser.add_argument(
         "--detection-mode",
         choices=["auto", "burst", "sustained", "hysteresis"],
         help="Detection strategy. auto falls back to sustained when burst cuts too aggressively.",
@@ -183,6 +240,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="Trim long segment tails after the final audio transient.",
     )
     parser.add_argument("--audio-tail-padding-seconds", type=float, help="Padding after final audio transient.")
+    parser.add_argument(
+        "--audio-silent-gap-trim-min-segment-seconds",
+        type=float,
+        help="Trim long no-hit gaps inside kept segments at least this long.",
+    )
+    parser.add_argument(
+        "--audio-silent-gap-trim-peak-threshold",
+        type=float,
+        help="Audio threshold used to detect hits around long silent gaps.",
+    )
+    parser.add_argument(
+        "--audio-silent-gap-trim-gap-seconds",
+        type=float,
+        help="Minimum no-hit gap inside a kept segment before trimming applies.",
+    )
+    parser.add_argument(
+        "--audio-silent-gap-trim-pre-padding-seconds",
+        type=float,
+        help="Seconds kept after the previous hit before trimming a silent gap.",
+    )
+    parser.add_argument(
+        "--audio-silent-gap-trim-post-padding-seconds",
+        type=float,
+        help="Seconds kept before the next hit after trimming a silent gap.",
+    )
     parser.add_argument("--min-rally-seconds", type=float, help="Override minimum rally duration.")
     parser.add_argument("--merge-gap-seconds", type=float, help="Override maximum gap to merge.")
     parser.add_argument("--final-continuity-merge-gap-seconds", type=float, help="Final merge for short gaps after all filters; favors complete rallies over tighter dead-ball cuts.")
@@ -233,6 +315,7 @@ def main(argv: list[str] | None = None) -> int:
 
     from .analyzer import VideoAnalyzer
     from .detector import RallyDetector
+    from .model_assist import refine_segments_with_model
     from .renderer import VideoRenderer, write_timeline
 
     analyzer = VideoAnalyzer(config)
@@ -240,6 +323,7 @@ def main(argv: list[str] | None = None) -> int:
     detector = RallyDetector(config)
     segments = detector.detect(analysis)
     segments = filter_segments_by_audio(input_path, segments, config, analysis.samples)
+    segments = refine_segments_with_model(input_path, segments, config)
 
     kept = sum(segment.duration for segment in segments)
     print(f"\nSource duration: {analysis.info.duration:.1f}s")
@@ -273,17 +357,17 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _prompt_interactive_args(args: argparse.Namespace) -> argparse.Namespace:
-    print("FantasyBaby网球视频自动剪辑")
-    print("请选择视频类型:")
-    print("  1. 发球训练视频")
-    print("  2. 双打比赛视频（比赛优化）")
-    print("  3. 单打比赛视频（比赛优化）")
+    print("FantasyBaby Tennis Cut")
+    print("Select video type:")
+    print("  1. Serve training")
+    print("  2. Doubles match")
+    print("  3. Singles match")
 
     if args.video_type is None:
-        args.video_type = _prompt_choice("请输入类型编号 (1/2/3): ", {"1", "2", "3"})
+        args.video_type = _prompt_choice("Enter video type (1/2/3): ", {"1", "2", "3"})
 
-    args.input = _prompt_path("请输入需要转换的视频路径: ", must_exist=True)
-    args.output = _prompt_path("请输入输出视频路径: ", must_exist=False)
+    args.input = _prompt_path("Enter input video path: ", must_exist=True)
+    args.output = _prompt_path("Enter output video path: ", must_exist=False)
     return args
 
 
@@ -292,19 +376,19 @@ def _prompt_choice(prompt: str, choices: set[str]) -> str:
         value = input(prompt).strip()
         if value in choices:
             return value
-        print(f"请输入有效选项: {', '.join(sorted(choices))}")
+        print(f"Please enter one of: {', '.join(sorted(choices))}")
 
 
 def _prompt_path(prompt: str, *, must_exist: bool) -> str:
     while True:
         value = _clean_pasted_path(input(prompt))
         if not value:
-            print("路径不能为空。")
+            print("Path cannot be empty.")
             continue
 
         path = Path(value)
         if must_exist and not path.exists():
-            print(f"找不到文件: {path}")
+            print(f"Path not found: {path}")
             continue
 
         if not must_exist:
@@ -408,6 +492,11 @@ def _apply_overrides(config: CutConfig, args: argparse.Namespace) -> CutConfig:
         "audio_rally_rescue_post_padding_seconds": args.audio_rally_rescue_post_padding_seconds,
         "audio_tail_trim_min_segment_seconds": args.audio_tail_trim_min_segment_seconds,
         "audio_tail_padding_seconds": args.audio_tail_padding_seconds,
+        "audio_silent_gap_trim_min_segment_seconds": args.audio_silent_gap_trim_min_segment_seconds,
+        "audio_silent_gap_trim_peak_threshold": args.audio_silent_gap_trim_peak_threshold,
+        "audio_silent_gap_trim_gap_seconds": args.audio_silent_gap_trim_gap_seconds,
+        "audio_silent_gap_trim_pre_padding_seconds": args.audio_silent_gap_trim_pre_padding_seconds,
+        "audio_silent_gap_trim_post_padding_seconds": args.audio_silent_gap_trim_post_padding_seconds,
         "min_rally_seconds": args.min_rally_seconds,
         "merge_gap_seconds": args.merge_gap_seconds,
         "final_continuity_merge_gap_seconds": args.final_continuity_merge_gap_seconds,
@@ -416,6 +505,20 @@ def _apply_overrides(config: CutConfig, args: argparse.Namespace) -> CutConfig:
         "serve_pre_roll_seconds": args.serve_pre_roll_seconds,
         "serve_pre_roll_gap_seconds": args.serve_pre_roll_gap_seconds,
         "ignore_initial_seconds": args.ignore_initial_seconds,
+        "model_assist_mode": args.model_assist,
+        "model_ball_model": args.model_ball_model,
+        "model_ball_sample_fps": args.model_ball_sample_fps,
+        "model_ball_confidence": args.model_ball_confidence,
+        "model_ball_bridge_min_confidence": args.model_ball_bridge_min_confidence,
+        "model_ball_image_size": args.model_ball_image_size,
+        "model_ball_candidate_gap_seconds": args.model_ball_candidate_gap_seconds,
+        "model_ball_max_gap_seconds": args.model_ball_max_gap_seconds,
+        "model_ball_min_active_seconds": args.model_ball_min_active_seconds,
+        "model_ball_min_detections": args.model_ball_min_detections,
+        "model_ball_min_motion_ratio": args.model_ball_min_motion_ratio,
+        "model_ball_bridge_padding_seconds": args.model_ball_bridge_padding_seconds,
+        "model_ball_max_bridges": args.model_ball_max_bridges,
+        "model_ball_trim_silent_gaps": args.model_ball_trim_silent_gaps,
         "prefer_stream_copy": args.prefer_stream_copy,
         "preserve_source_bitrate": args.preserve_source_bitrate,
         "fallback_crf": args.fallback_crf,

@@ -103,6 +103,11 @@ class CutConfig:
     audio_rally_rescue_post_padding_seconds: float = 1.0
     audio_tail_trim_min_segment_seconds: float = 0.0
     audio_tail_padding_seconds: float = 1.4
+    audio_silent_gap_trim_min_segment_seconds: float = 0.0
+    audio_silent_gap_trim_peak_threshold: float = 0.45
+    audio_silent_gap_trim_gap_seconds: float = 24.0
+    audio_silent_gap_trim_pre_padding_seconds: float = 1.4
+    audio_silent_gap_trim_post_padding_seconds: float = 2.5
     auto_fallback_min_kept_ratio: float = 0.15
     min_rally_seconds: float = 3.0
     merge_gap_seconds: float = 2.2
@@ -112,6 +117,20 @@ class CutConfig:
     serve_pre_roll_seconds: float = 0.0
     serve_pre_roll_gap_seconds: float = 8.0
     ignore_initial_seconds: float = 0.0
+    model_assist_mode: str = "off"
+    model_ball_model: str = "RJTPP/tennis-ball-detection"
+    model_ball_sample_fps: float = 3.0
+    model_ball_confidence: float = 0.20
+    model_ball_bridge_min_confidence: float = 0.30
+    model_ball_image_size: int = 640
+    model_ball_candidate_gap_seconds: float = 45.0
+    model_ball_max_gap_seconds: float = 8.0
+    model_ball_min_active_seconds: float = 3.0
+    model_ball_min_detections: int = 3
+    model_ball_min_motion_ratio: float = 0.006
+    model_ball_bridge_padding_seconds: float = 3.0
+    model_ball_max_bridges: int = 10
+    model_ball_trim_silent_gaps: bool = False
 
     prefer_stream_copy: bool = True
     preserve_source_bitrate: bool = True
@@ -241,6 +260,11 @@ VIDEO_TYPE_PRESETS: dict[str, dict[str, Any]] = {
         "audio_rally_rescue_pre_padding_seconds": 2.2,
         "audio_rally_rescue_post_padding_seconds": 0.8,
         "audio_tail_trim_min_segment_seconds": 0.0,
+        "audio_silent_gap_trim_min_segment_seconds": 60.0,
+        "audio_silent_gap_trim_peak_threshold": 0.65,
+        "audio_silent_gap_trim_gap_seconds": 20.0,
+        "audio_silent_gap_trim_pre_padding_seconds": 1.4,
+        "audio_silent_gap_trim_post_padding_seconds": 2.5,
         "quality_trim_threshold": 0.34,
         "min_rally_seconds": 3.0,
         "merge_gap_seconds": 1.6,
@@ -249,6 +273,16 @@ VIDEO_TYPE_PRESETS: dict[str, dict[str, Any]] = {
         "serve_pre_roll_seconds": 2.0,
         "serve_pre_roll_gap_seconds": 8.0,
         "ignore_initial_seconds": 4.0,
+        "model_ball_sample_fps": 3.0,
+        "model_ball_confidence": 0.18,
+        "model_ball_bridge_min_confidence": 0.30,
+        "model_ball_candidate_gap_seconds": 25.0,
+        "model_ball_max_gap_seconds": 9.0,
+        "model_ball_min_active_seconds": 3.0,
+        "model_ball_min_detections": 3,
+        "model_ball_min_motion_ratio": 0.005,
+        "model_ball_bridge_padding_seconds": 3.5,
+        "model_ball_max_bridges": 10,
         "prefer_stream_copy": False,
         "preserve_source_bitrate": True,
         "fallback_preset": "veryfast",
