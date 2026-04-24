@@ -1,51 +1,48 @@
 # FantasyBaby Tennis Cut
 
-用于网球视频自动剪辑的本地工具。它会分析画面运动、音频击球瞬态和可选的网球检测模型，尽量删除捡球、等待、走位等死球时间，保留连续回合。
+Local tooling for automatically cutting tennis videos down to rally footage.
 
-当前工程支持两套方案：
+The project supports two workflows:
+- `Legacy audio/visual rules`: the original rule-based cutter.
+- `New model-assisted ball tracking`: the same rule-based pipeline plus YOLO tennis-ball detection to recover rallies that were cut too aggressively.
 
-- 旧方案：仅使用原有音频/画面规则。
-- 新方案：在旧方案基础上，用网球检测模型补回被误切断的单打回合。
+## Features
 
-## 功能
+- Samples video motion to detect likely rally activity.
+- Uses audio transients to reject weak segments, bridge nearby rallies, and trim dead-ball sections.
+- Includes presets for serve practice, doubles matches, and singles matches.
+- Optionally uses a ball-detection model to repair fragmented singles rallies.
+- Can write a timeline JSON as well as the final rendered video.
+- Includes interactive launcher scripts for Windows and macOS/Linux.
 
-- 自动抽样分析视频画面运动。
-- 基于音频瞬态过滤短误检片段、桥接邻近回合、裁剪长尾空白。
-- 为单打模式提供更激进的补桥、补回和尾部修剪参数。
-- 可选启用 YOLO 网球检测模型，修复疑似被规则误切的连续回合。
-- 导出剪辑后视频，也可只做分析并导出时间线 JSON。
-- Windows 和 macOS/Linux 都有交互式启动脚本。
+## Setup
 
-## 环境准备
-
-项目使用 `uv` 管理依赖，建议系统已安装 `ffmpeg`。
-
-基础依赖：
+Install the base dependencies:
 
 ```powershell
 uv sync
 ```
 
-如果需要使用新模型方案，再安装模型依赖：
+If you want to use the model-assisted workflow, install the model extra too:
 
 ```powershell
 uv sync --extra model
 ```
 
-检查 `ffmpeg`：
+`ffmpeg` is recommended for best output quality:
 
 ```powershell
 ffmpeg -version
 ```
 
-如果本机 `uv` 默认缓存目录有权限问题，也可以把缓存放在项目内：
+If the default `uv` cache location causes permission issues, keep the cache inside the repo:
 
 ```powershell
 $env:UV_CACHE_DIR = "$PWD\\.uv-cache"
 uv sync
 ```
 
-## 快速启动
+## Quick Start
 
 ### Windows
 
@@ -53,18 +50,9 @@ uv sync
 .\start_tennis_cut.bat
 ```
 
-脚本会先让用户选择剪辑方案：
-
-- `1` 旧方案：`Legacy audio/visual rules`
-- `2` 新方案：`New model-assisted ball tracking`
-
-如果选择新方案，第一次运行前先执行：
-
-```powershell
-uv sync --extra model
-```
-
-然后脚本会继续提示输入视频类型、输入视频路径和输出视频路径。
+The script asks you to choose:
+- `1` `Legacy audio/visual rules`
+- `2` `New model-assisted ball tracking`
 
 ### macOS / Linux
 
@@ -73,65 +61,66 @@ chmod +x start_tennis_cut.sh
 ./start_tennis_cut.sh
 ```
 
-shell 启动脚本和 Windows 一样，也会先让用户选择旧方案或新模型方案。
+The shell launcher offers the same legacy vs model-assisted choice.
 
-## 命令行直接运行
+## CLI Usage
 
-基础用法：
+Basic usage:
 
 ```powershell
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\input.mp4" -o "D:\videos\tennis_rallies.mp4"
 ```
 
-不带输入路径时会进入交互模式：
+Interactive mode:
 
 ```powershell
 uv --cache-dir .uv-cache run tennis-cut
 ```
 
-指定视频类型：
+Video-type presets:
 
 ```powershell
-# 1 = 发球训练
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\serve.mp4" -o "D:\videos\serve_cut.mp4" --video-type 1
-
-# 2 = 双打比赛
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\doubles.mp4" -o "D:\videos\doubles_cut.mp4" --video-type 2
-
-# 3 = 单打比赛
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\singles.mp4" -o "D:\videos\singles_cut.mp4" --video-type 3
 ```
 
-只分析，不输出视频：
+Analyze only and export the timeline:
 
 ```powershell
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\input.mp4" --dry-run --timeline "D:\videos\timeline.json"
 ```
 
-使用配置文件：
+Use a config file:
 
 ```powershell
 uv --cache-dir .uv-cache run tennis-cut "D:\videos\input.mp4" -o "D:\videos\out.mp4" --config configs\default.yaml
 ```
 
-## 新模型方案
+If the match clearly ends before cooldown, water, or post-match chat footage, you can clip the output at a fixed timestamp:
 
-启用模型辅助模式：
+```powershell
+uv --cache-dir .uv-cache run tennis-cut "D:\videos\singles.mp4" -o "D:\videos\singles_cut.mp4" --video-type 3 --clip-end-seconds 1869
+```
+
+## Model-Assisted Workflow
+
+Enable the ball-tracking assist:
 
 ```powershell
 uv --cache-dir .uv-cache run tennis-cut "D:\videomarker\aiVideoWorkspace\single1.mp4" -o "D:\videomarker\aiVideoWorkspace\output\single1_cut_model.mp4" --video-type 3 --model-assist ball
 ```
 
-`--model-assist ball` 会在原有音频/画面规则之后，再用 YOLO 网球检测模型扫描候选缺口，补回疑似被误切断的连续回合。
+By default the model comes from Hugging Face:
+- `RJTPP/tennis-ball-detection`
 
-默认模型来源是 Hugging Face 上的 `RJTPP/tennis-ball-detection`。也可以显式传入本地模型文件：
+You can point to a local model file instead:
 
 ```powershell
 uv --cache-dir .uv-cache run tennis-cut "D:\videomarker\aiVideoWorkspace\single1.mp4" -o "D:\videomarker\aiVideoWorkspace\output\single1_cut_model.mp4" --video-type 3 --model-assist ball --model-ball-model "D:\models\tennisball.pt"
 ```
 
-常用相关参数：
-
+Useful model-related arguments:
 - `--model-ball-sample-fps`
 - `--model-ball-confidence`
 - `--model-ball-bridge-min-confidence`
@@ -143,65 +132,68 @@ uv --cache-dir .uv-cache run tennis-cut "D:\videomarker\aiVideoWorkspace\single1
 - `--model-ball-bridge-padding-seconds`
 - `--model-ball-max-bridges`
 
-## 单打测试脚本
+## Singles Test Scripts
 
-旧方案单打测试：
+Legacy singles test:
 
 ```powershell
 .\test_single_match.bat
 ```
 
-如果要输出时间线：
-
-```powershell
-.\test_single_match.bat --timeline "D:\videomarker\aiVideoWorkspace\output\single1_timeline.json"
-```
-
-新模型方案单打测试：
+Standard model-assisted singles test:
 
 ```powershell
 .\test_single_match_model.bat
 ```
 
-该脚本默认输入：
+Recommended rally-complete singles recipe:
 
-- 输入视频：`D:\videomarker\aiVideoWorkspace\single1.mp4`
-- 输出视频：`D:\videomarker\aiVideoWorkspace\output\single1_cut_model.mp4`
+```powershell
+.\test_single_match_model_balanced_v2.bat
+```
 
-它会自动附带 `--video-type 3 --model-assist ball`，其余额外参数可以继续从命令行追加。
+The `balanced v2` script bakes in the current recommended singles settings:
+- extra pre-roll and post-roll so rallies do not feel clipped
+- larger continuity merges and gap rescue windows
+- no aggressive tail trimming or silent-gap trimming
+- `--clip-end-seconds 1869` so post-match chat footage is removed after the net tap / handshake ending
 
-## 输出时间线
+Default outputs for the curated script:
+- video: `D:\videomarker\aiVideoWorkspace\output\single1_cut_model_balanced_v2.mp4`
+- timeline: `D:\videomarker\aiVideoWorkspace\output\single1_cut_model_balanced_v2.timeline.json`
 
-时间线 JSON 包含：
+## Timeline Output
 
+The timeline JSON contains:
 - `input`
 - `duration_seconds`
 - `kept_seconds`
 - `segments`
 - `samples`
 
-## 调参建议
+## Tuning Tips
 
-- 漏掉短回合：降低 `active_threshold` 或 `min_rally_seconds`。
-- 捡球也被保留：提高 `active_threshold` 或 `min_rally_seconds`。
-- 剪辑点太紧：增大 `pre_roll_seconds` 和 `post_roll_seconds`。
-- 一段回合被切开：增大 `merge_gap_seconds`。
-- 单打被误切：优先尝试 `--model-assist ball`。
+- If short rallies are missed, lower `active_threshold` or `min_rally_seconds`.
+- If too much dead-ball time remains, raise `active_threshold` or `min_rally_seconds`.
+- If cut points feel too tight, increase `pre_roll_seconds` or `post_roll_seconds`.
+- If a rally gets split in two, increase `merge_gap_seconds` or `final_continuity_merge_gap_seconds`.
+- If singles footage is over-cut, try `--model-assist ball` before changing lower-level thresholds.
 
-## 项目结构
+## Project Layout
 
 ```text
 fantasybaby_tennis_cut/
-  analyzer.py               # 视频抽样和运动特征分析
-  audio.py                  # 音频瞬态分析、桥接与裁剪
-  cli.py                    # 命令行入口
-  config.py                 # 配置与预设
-  detector.py               # 回合检测
-  model_assist.py           # 模型辅助补桥逻辑
-  renderer.py               # 视频输出
-  segments.py               # 片段结构与合并
-start_tennis_cut.bat        # Windows 交互式启动脚本
-start_tennis_cut.sh         # macOS/Linux 交互式启动脚本
-test_single_match.bat       # Windows 单打旧方案测试脚本
-test_single_match_model.bat # Windows 单打新模型方案测试脚本
+  analyzer.py
+  audio.py
+  cli.py
+  config.py
+  detector.py
+  model_assist.py
+  renderer.py
+  segments.py
+start_tennis_cut.bat
+start_tennis_cut.sh
+test_single_match.bat
+test_single_match_model.bat
+test_single_match_model_balanced_v2.bat
 ```

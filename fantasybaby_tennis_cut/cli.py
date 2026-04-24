@@ -42,6 +42,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--timeline", help="Write detected timeline JSON.")
     parser.add_argument("--dry-run", action="store_true", help="Analyze only, do not render video.")
     parser.add_argument(
+        "--clip-end-seconds",
+        type=float,
+        help="Trim every kept segment to end no later than this timestamp. Useful when the match ends before post-match chat or cooldown footage.",
+    )
+    parser.add_argument(
         "--model-assist",
         choices=["off", "ball"],
         help="Use an optional open-source model to refine rally continuity.",
@@ -324,6 +329,7 @@ def main(argv: list[str] | None = None) -> int:
     segments = detector.detect(analysis)
     segments = filter_segments_by_audio(input_path, segments, config, analysis.samples)
     segments = refine_segments_with_model(input_path, segments, config)
+    segments = _clip_segments(segments, args.clip_end_seconds)
 
     kept = sum(segment.duration for segment in segments)
     print(f"\nSource duration: {analysis.info.duration:.1f}s")
@@ -402,6 +408,22 @@ def _clean_pasted_path(value: str) -> str:
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
         return value[1:-1]
     return value
+
+
+def _clip_segments(segments: list["Segment"], clip_end_seconds: float | None) -> list["Segment"]:
+    if clip_end_seconds is None:
+        return segments
+
+    from .segments import Segment
+
+    clipped: list[Segment] = []
+    for segment in segments:
+        if segment.start >= clip_end_seconds:
+            continue
+        end = min(segment.end, clip_end_seconds)
+        if end > segment.start:
+            clipped.append(Segment(segment.start, end, segment.score))
+    return clipped
 
 
 def _apply_overrides(config: CutConfig, args: argparse.Namespace) -> CutConfig:

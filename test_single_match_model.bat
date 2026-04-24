@@ -22,6 +22,9 @@ echo FantasyBaby singles match model-assisted test cut
 echo Input: %INPUT_VIDEO%
 echo Output: %OUTPUT_VIDEO%
 echo.
+echo For the curated rally-complete recipe, run:
+echo .\test_single_match_model_balanced_v2.bat
+echo.
 echo If model dependencies are missing, run:
 echo uv sync --extra model
 echo.

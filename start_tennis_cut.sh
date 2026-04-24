@@ -9,6 +9,8 @@ echo "Select cut engine:"
 echo "  1. Legacy audio/visual rules"
 echo "  2. New model-assisted ball tracking"
 echo
+echo "Tip: the curated singles full-rally recipe is documented in README.md"
+echo
 while true; do
   read -r -p "Enter 1 or 2: " cut_engine
   case "$cut_engine" in

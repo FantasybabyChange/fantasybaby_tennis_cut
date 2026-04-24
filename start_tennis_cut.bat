@@ -9,6 +9,9 @@ echo Select cut engine:
 echo   1. Legacy audio/visual rules
 echo   2. New model-assisted ball tracking
 echo.
+echo Tip: for the curated singles full-rally recipe on Windows,
+echo run .\test_single_match_model_balanced_v2.bat
+echo.
 set "CUT_ENGINE="
 :choose_engine
 set /p "CUT_ENGINE=Enter 1 or 2: "
