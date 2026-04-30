@@ -50,11 +50,7 @@ def refine_segments_with_model(
 
     bridge_segments = build_model_gap_bridges(detections, segments, config)
     rescue_segments = build_model_gap_rallies(detections, segments, duration, config)
-    if not bridge_segments and not rescue_segments:
-        print("Model assist: no moving-ball cut gaps found; keeping audio/visual segments.")
-        return segments
-
-    refined = merge_segments(
+    guard_base = merge_segments(
         [
             *_copy_segments(segments),
             *_copy_segments(bridge_segments),
@@ -63,17 +59,26 @@ def refine_segments_with_model(
         config.merge_gap_seconds,
     )
     if config.model_ball_trim_silent_gaps:
-        refined = trim_no_ball_gaps(refined, detections, config)
+        guard_base = trim_no_ball_gaps(guard_base, detections, config)
+    guard_base = filter_short_segments(guard_base, config.min_rally_seconds)
+    refined, guard_segments = protect_model_rally_continuity(guard_base, detections, duration, config)
+    if not bridge_segments and not rescue_segments and not guard_segments:
+        print("Model assist: no moving-ball cut gaps found; keeping audio/visual segments.")
+        return segments
+
     refined = filter_short_segments(refined, config.min_rally_seconds)
     print(
         "Model assist: "
         f"bridged {len(bridge_segments)} short cut gap(s), "
-        f"rescued {len(rescue_segments)} missing rally segment(s)."
+        f"rescued {len(rescue_segments)} missing rally segment(s), "
+        f"protected {len(guard_segments)} complete rally cluster(s)."
     )
     for bridge in bridge_segments:
         print(f"  model bridge {bridge.start:.2f}s -> {bridge.end:.2f}s")
     for rescue in rescue_segments:
         print(f"  model rescue {rescue.start:.2f}s -> {rescue.end:.2f}s")
+    for guard in guard_segments:
+        print(f"  model complete-rally guard {guard.start:.2f}s -> {guard.end:.2f}s")
     return refined
 
 
@@ -120,15 +125,20 @@ def build_ball_rally_segments(
     detections: list[BallDetection],
     duration: float,
     config: CutConfig,
+    cluster_gap_seconds: float | None = None,
 ) -> list[Segment]:
     moving_times = _moving_ball_times(detections, config)
     if not moving_times:
         return []
 
+    max_cluster_gap = config.model_ball_max_gap_seconds
+    if cluster_gap_seconds is not None:
+        max_cluster_gap = cluster_gap_seconds
+
     clusters: list[list[float]] = []
     current = [moving_times[0]]
     for time in moving_times[1:]:
-        if time - current[-1] <= config.model_ball_max_gap_seconds:
+        if time - current[-1] <= max_cluster_gap:
             current.append(time)
         else:
             clusters.append(current)
@@ -241,6 +251,38 @@ def build_model_gap_rallies(
     return merge_segments(rescue_segments, config.merge_gap_seconds)
 
 
+def protect_model_rally_continuity(
+    segments: list[Segment],
+    detections: list[BallDetection],
+    duration: float,
+    config: CutConfig,
+) -> tuple[list[Segment], list[Segment]]:
+    if not config.model_ball_complete_rally_guard:
+        return segments, []
+
+    guard_segments = build_ball_rally_segments(
+        detections,
+        duration,
+        config,
+        cluster_gap_seconds=config.model_ball_complete_rally_gap_seconds,
+    )
+    if not guard_segments:
+        return segments, []
+
+    kept = merge_segments(_copy_segments(segments), config.merge_gap_seconds)
+    additions: list[Segment] = []
+    for guard in guard_segments:
+        if not _rally_guard_needed(guard, kept, config):
+            continue
+        additions.append(Segment(guard.start, guard.end, guard.score))
+
+    if not additions:
+        return segments, []
+
+    protected = merge_segments([*_copy_segments(segments), *_copy_segments(additions)], config.merge_gap_seconds)
+    return protected, additions
+
+
 def trim_no_ball_gaps(
     segments: list[Segment],
     detections: list[BallDetection],
@@ -349,6 +391,38 @@ def _uncovered_pieces(candidate: Segment, kept: list[Segment], config: CutConfig
 
 def _copy_segments(segments: list[Segment]) -> list[Segment]:
     return [Segment(segment.start, segment.end, segment.score) for segment in segments]
+
+
+def _rally_guard_needed(guard: Segment, kept: list[Segment], config: CutConfig) -> bool:
+    overlaps = [
+        segment
+        for segment in kept
+        if segment.end > guard.start and segment.start < guard.end
+    ]
+    if not overlaps:
+        return guard.duration >= config.min_rally_seconds
+
+    # Completeness guard is stricter than rescue: even a sub-second cut inside
+    # a model rally cluster is enough reason to keep the whole cluster.
+    return _uncovered_duration(guard, kept) > 0.25
+
+
+def _uncovered_duration(candidate: Segment, kept: list[Segment]) -> float:
+    cursor = candidate.start
+    total = 0.0
+    for segment in kept:
+        if segment.end <= cursor:
+            continue
+        if segment.start >= candidate.end:
+            break
+        if segment.start > cursor:
+            total += min(segment.start, candidate.end) - cursor
+        cursor = max(cursor, min(segment.end, candidate.end))
+        if cursor >= candidate.end:
+            break
+    if cursor < candidate.end:
+        total += candidate.end - cursor
+    return total
 
 
 def merge_time_windows(

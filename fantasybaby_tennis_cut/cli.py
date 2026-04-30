@@ -109,6 +109,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Maximum removed gap length scanned for model-detected missing rallies.",
     )
     parser.add_argument(
+        "--model-ball-complete-rally-guard",
+        action=argparse.BooleanOptionalAction,
+        help="Prevent final cut points from landing inside model-detected moving-ball rally clusters.",
+    )
+    parser.add_argument(
+        "--model-ball-complete-rally-gap-seconds",
+        type=float,
+        help="Maximum gap between moving-ball detections inside one complete-rally guard cluster.",
+    )
+    parser.add_argument(
         "--model-ball-trim-silent-gaps",
         action=argparse.BooleanOptionalAction,
         help="Allow model assist to trim long gaps without moving-ball detections inside kept segments.",
@@ -552,6 +562,8 @@ def _apply_overrides(config: CutConfig, args: argparse.Namespace) -> CutConfig:
         "model_ball_max_bridges": args.model_ball_max_bridges,
         "model_ball_rescue_missing_rallies": args.model_ball_rescue_missing_rallies,
         "model_ball_rescue_gap_seconds": args.model_ball_rescue_gap_seconds,
+        "model_ball_complete_rally_guard": args.model_ball_complete_rally_guard,
+        "model_ball_complete_rally_gap_seconds": args.model_ball_complete_rally_gap_seconds,
         "model_ball_trim_silent_gaps": args.model_ball_trim_silent_gaps,
         "prefer_stream_copy": args.prefer_stream_copy,
         "preserve_source_bitrate": args.preserve_source_bitrate,

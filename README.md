@@ -133,10 +133,13 @@ Useful model-related arguments:
 - `--model-ball-max-bridges`
 - `--model-ball-rescue-missing-rallies` / `--no-model-ball-rescue-missing-rallies`
 - `--model-ball-rescue-gap-seconds`
+- `--model-ball-complete-rally-guard` / `--no-model-ball-complete-rally-guard`
+- `--model-ball-complete-rally-gap-seconds`
 
 In singles mode, model assist now uses two passes:
 - short removed gaps are bridged when moving-ball detections show one rally was split
 - larger removed gaps are scanned for moving-ball clusters, then only those rally clusters are restored instead of keeping the full waiting gap
+- final cut points are protected so they do not land inside model-detected complete-rally clusters
 
 ## Singles Test Scripts
 

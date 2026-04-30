@@ -132,6 +132,8 @@ class CutConfig:
     model_ball_max_bridges: int = 10
     model_ball_rescue_missing_rallies: bool = True
     model_ball_rescue_gap_seconds: float = 90.0
+    model_ball_complete_rally_guard: bool = True
+    model_ball_complete_rally_gap_seconds: float = 6.0
     model_ball_trim_silent_gaps: bool = False
 
     prefer_stream_copy: bool = True
@@ -287,6 +289,8 @@ VIDEO_TYPE_PRESETS: dict[str, dict[str, Any]] = {
         "model_ball_max_bridges": 0,
         "model_ball_rescue_missing_rallies": True,
         "model_ball_rescue_gap_seconds": 120.0,
+        "model_ball_complete_rally_guard": True,
+        "model_ball_complete_rally_gap_seconds": 5.5,
         "prefer_stream_copy": False,
         "preserve_source_bitrate": True,
         "fallback_preset": "veryfast",
