@@ -130,6 +130,8 @@ class CutConfig:
     model_ball_min_motion_ratio: float = 0.006
     model_ball_bridge_padding_seconds: float = 3.0
     model_ball_max_bridges: int = 10
+    model_ball_rescue_missing_rallies: bool = True
+    model_ball_rescue_gap_seconds: float = 90.0
     model_ball_trim_silent_gaps: bool = False
 
     prefer_stream_copy: bool = True
@@ -282,7 +284,9 @@ VIDEO_TYPE_PRESETS: dict[str, dict[str, Any]] = {
         "model_ball_min_detections": 3,
         "model_ball_min_motion_ratio": 0.005,
         "model_ball_bridge_padding_seconds": 3.5,
-        "model_ball_max_bridges": 10,
+        "model_ball_max_bridges": 0,
+        "model_ball_rescue_missing_rallies": True,
+        "model_ball_rescue_gap_seconds": 120.0,
         "prefer_stream_copy": False,
         "preserve_source_bitrate": True,
         "fallback_preset": "veryfast",

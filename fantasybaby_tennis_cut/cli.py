@@ -96,7 +96,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--model-ball-max-bridges",
         type=int,
-        help="Maximum number of model-assisted cut gaps to bridge per video.",
+        help="Maximum number of model-assisted short cut gaps to bridge per video. Use 0 for unlimited.",
+    )
+    parser.add_argument(
+        "--model-ball-rescue-missing-rallies",
+        action=argparse.BooleanOptionalAction,
+        help="Scan larger removed gaps and recover model-detected moving-ball rally clusters.",
+    )
+    parser.add_argument(
+        "--model-ball-rescue-gap-seconds",
+        type=float,
+        help="Maximum removed gap length scanned for model-detected missing rallies.",
     )
     parser.add_argument(
         "--model-ball-trim-silent-gaps",
@@ -540,6 +550,8 @@ def _apply_overrides(config: CutConfig, args: argparse.Namespace) -> CutConfig:
         "model_ball_min_motion_ratio": args.model_ball_min_motion_ratio,
         "model_ball_bridge_padding_seconds": args.model_ball_bridge_padding_seconds,
         "model_ball_max_bridges": args.model_ball_max_bridges,
+        "model_ball_rescue_missing_rallies": args.model_ball_rescue_missing_rallies,
+        "model_ball_rescue_gap_seconds": args.model_ball_rescue_gap_seconds,
         "model_ball_trim_silent_gaps": args.model_ball_trim_silent_gaps,
         "prefer_stream_copy": args.prefer_stream_copy,
         "preserve_source_bitrate": args.preserve_source_bitrate,

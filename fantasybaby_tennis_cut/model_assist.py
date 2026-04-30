@@ -49,17 +49,31 @@ def refine_segments_with_model(
         return segments
 
     bridge_segments = build_model_gap_bridges(detections, segments, config)
-    if not bridge_segments:
+    rescue_segments = build_model_gap_rallies(detections, segments, duration, config)
+    if not bridge_segments and not rescue_segments:
         print("Model assist: no moving-ball cut gaps found; keeping audio/visual segments.")
         return segments
 
-    refined = merge_segments([*segments, *bridge_segments], config.merge_gap_seconds)
+    refined = merge_segments(
+        [
+            *_copy_segments(segments),
+            *_copy_segments(bridge_segments),
+            *_copy_segments(rescue_segments),
+        ],
+        config.merge_gap_seconds,
+    )
     if config.model_ball_trim_silent_gaps:
         refined = trim_no_ball_gaps(refined, detections, config)
     refined = filter_short_segments(refined, config.min_rally_seconds)
-    print(f"Model assist: bridged {len(bridge_segments)} moving-ball cut gap(s).")
+    print(
+        "Model assist: "
+        f"bridged {len(bridge_segments)} short cut gap(s), "
+        f"rescued {len(rescue_segments)} missing rally segment(s)."
+    )
     for bridge in bridge_segments:
         print(f"  model bridge {bridge.start:.2f}s -> {bridge.end:.2f}s")
+    for rescue in rescue_segments:
+        print(f"  model rescue {rescue.start:.2f}s -> {rescue.end:.2f}s")
     return refined
 
 
@@ -196,16 +210,35 @@ def build_model_gap_bridges(
     selected: list[BridgeCandidate] = []
     used_indexes: set[int] = set()
     for candidate in sorted(candidates, key=lambda item: item.score, reverse=True):
-        if len(selected) >= config.model_ball_max_bridges:
+        if config.model_ball_max_bridges > 0 and len(selected) >= config.model_ball_max_bridges:
             break
         if candidate.index in used_indexes:
-            continue
-        if candidate.index - 1 in used_indexes or candidate.index + 1 in used_indexes:
             continue
         selected.append(candidate)
         used_indexes.add(candidate.index)
 
     return [candidate.segment for candidate in sorted(selected, key=lambda item: item.index)]
+
+
+def build_model_gap_rallies(
+    detections: list[BallDetection],
+    segments: list[Segment],
+    duration: float,
+    config: CutConfig,
+) -> list[Segment]:
+    if not config.model_ball_rescue_missing_rallies:
+        return []
+
+    model_segments = build_ball_rally_segments(detections, duration, config)
+    if not model_segments:
+        return []
+
+    kept = merge_segments(_copy_segments(segments), config.merge_gap_seconds)
+    rescue_segments: list[Segment] = []
+    for segment in model_segments:
+        rescue_segments.extend(_uncovered_pieces(segment, kept, config))
+
+    return merge_segments(rescue_segments, config.merge_gap_seconds)
 
 
 def trim_no_ball_gaps(
@@ -273,12 +306,16 @@ def _candidate_windows(
     if len(segments) < 2:
         return []
 
+    max_gap = config.model_ball_candidate_gap_seconds
+    if config.model_ball_rescue_missing_rallies:
+        max_gap = max(max_gap, config.model_ball_rescue_gap_seconds)
+
     windows: list[tuple[float, float]] = []
     for previous, current in zip(segments, segments[1:]):
         gap = current.start - previous.end
         if gap <= config.merge_gap_seconds:
             continue
-        if gap > config.model_ball_candidate_gap_seconds:
+        if gap > max_gap:
             continue
         start = max(0.0, previous.end - config.model_ball_bridge_padding_seconds)
         end = current.start + config.model_ball_bridge_padding_seconds
@@ -286,6 +323,32 @@ def _candidate_windows(
             windows.append((start, end))
 
     return merge_time_windows(windows, config.model_ball_bridge_padding_seconds)
+
+
+def _uncovered_pieces(candidate: Segment, kept: list[Segment], config: CutConfig) -> list[Segment]:
+    cursor = candidate.start
+    pieces: list[Segment] = []
+    for segment in kept:
+        if segment.end <= cursor:
+            continue
+        if segment.start >= candidate.end:
+            break
+        if segment.start > cursor:
+            end = min(segment.start, candidate.end)
+            if end - cursor >= config.min_rally_seconds:
+                pieces.append(Segment(cursor, end, candidate.score))
+        cursor = max(cursor, min(segment.end, candidate.end))
+        if cursor >= candidate.end:
+            break
+    if cursor < candidate.end:
+        end = candidate.end
+        if end - cursor >= config.min_rally_seconds:
+            pieces.append(Segment(cursor, end, candidate.score))
+    return pieces
+
+
+def _copy_segments(segments: list[Segment]) -> list[Segment]:
+    return [Segment(segment.start, segment.end, segment.score) for segment in segments]
 
 
 def merge_time_windows(
