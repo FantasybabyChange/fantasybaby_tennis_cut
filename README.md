@@ -11,7 +11,7 @@ The project supports two workflows:
 - Samples video motion to detect likely rally activity.
 - Uses audio transients to reject weak segments, bridge nearby rallies, and trim dead-ball sections.
 - Includes presets for serve practice, doubles matches, and singles matches.
-- Optionally uses a ball-detection model to repair fragmented singles rallies.
+- Optionally uses a ball-detection model to repair fragmented singles and doubles rallies.
 - Can write a timeline JSON as well as the final rendered video.
 - Includes interactive launcher scripts for Windows and macOS/Linux.
 
@@ -136,9 +136,9 @@ Useful model-related arguments:
 - `--model-ball-complete-rally-guard` / `--no-model-ball-complete-rally-guard`
 - `--model-ball-complete-rally-gap-seconds`
 
-In singles mode, model assist now uses two passes:
+In singles and doubles mode, model assist now uses complete-rally protection:
 - short removed gaps are bridged when moving-ball detections show one rally was split
-- larger removed gaps are scanned for moving-ball clusters, then only those rally clusters are restored instead of keeping the full waiting gap
+- removed gaps are scanned for moving-ball clusters, then only those rally clusters are restored instead of keeping the full waiting gap
 - final cut points are protected so they do not land inside model-detected complete-rally clusters
 
 ## Singles Test Scripts
@@ -186,7 +186,7 @@ The timeline JSON contains:
 - If too much dead-ball time remains, raise `active_threshold` or `min_rally_seconds`.
 - If cut points feel too tight, increase `pre_roll_seconds` or `post_roll_seconds`.
 - If a rally gets split in two, increase `merge_gap_seconds` or `final_continuity_merge_gap_seconds`.
-- If singles footage is over-cut, try `--model-assist ball` before changing lower-level thresholds.
+- If singles or doubles footage is over-cut, try `--model-assist ball` before changing lower-level thresholds.
 
 ## Project Layout
 
