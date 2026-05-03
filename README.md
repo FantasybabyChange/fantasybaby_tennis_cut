@@ -140,6 +140,7 @@ In singles and doubles mode, model assist now uses complete-rally protection:
 - short removed gaps are bridged when moving-ball detections show one rally was split
 - removed gaps are scanned for moving-ball clusters, then only those rally clusters are restored instead of keeping the full waiting gap
 - final cut points are protected so they do not land inside model-detected complete-rally clusters
+- doubles mode is more conservative: it allows longer low-visibility pauses, disables aggressive tail/silent trimming, and treats wider model ball-detection gaps as one possible rally
 
 ## Singles Test Scripts
 

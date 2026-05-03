@@ -38,8 +38,12 @@ def refine_segments_with_model(
     if mode != "ball":
         raise ValueError(f"Unsupported model assist mode: {config.model_assist_mode}")
 
-    windows = _candidate_windows(segments, config)
-    if not windows:
+    full_video_scan = (
+        config.model_ball_rescue_missing_rallies
+        and config.model_ball_rescue_gap_seconds >= 9999.0
+    )
+    windows = None if full_video_scan else _candidate_windows(segments, config)
+    if not full_video_scan and not windows:
         print("Model assist: no candidate gaps to scan.")
         return segments
 
